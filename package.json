@@ -1,0 +1,24 @@
+{
+  "name": "cmp_project",
+  "version": "1.0.0",
+  "description": "Playwright + JavaScript test framework",
+  "type": "module",
+
+  "scripts": {
+    "test": "npx playwright test",
+    "test:headed": "npx playwright test --headed",
+    "report:latest": "ls -td reports/html-report-* | head -1 | xargs npx playwright show-report",
+    "clean:reports": "ls -td reports/html-report-* | tail -n +6 | xargs rm -rf"
+  },
+
+  "author": "Your Name",
+  "license": "ISC",
+
+  "devDependencies": {
+    "@playwright/test": "^1.57.0"
+  },
+
+  "dependencies": {
+    "dotenv": "^17.2.3"
+  }
+}
