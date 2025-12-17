@@ -46,14 +46,20 @@ export class BasePage {
 
   // ---------------- WAITS ----------------
   async waitForElement(selector, timeout = 5000) {
-    await this.page.locator(selector).first().waitFor({ timeout });
+    await this.page
+      .locator(selector)
+      .first()
+      .waitFor({ state: 'visible', timeout });
   }
 
   async waitForElementVisible(selector, timeout = 10000) {
     try {
-      await this.page.locator(selector).first().waitFor({ state: 'visible', timeout });
+      await this.page
+        .locator(selector)
+        .first()
+        .waitFor({ state: 'visible', timeout });
       return true;
-    } catch (err) {
+    } catch {
       return false;
     }
   }
@@ -73,6 +79,6 @@ export class BasePage {
 
   // ---------------- NAVIGATION ----------------
   async goToBaseURL() {
-    await this.page.goto(BASE_URL);
+    await this.page.goto(BASE_URL, { waitUntil: 'domcontentloaded' });
   }
 }
