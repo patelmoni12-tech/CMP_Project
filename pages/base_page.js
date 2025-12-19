@@ -6,15 +6,27 @@ import fs from 'fs';
 const ROOT_DIR = path.resolve();
 const ENV_PATH = path.join(ROOT_DIR, '.env');
 
-if (!fs.existsSync(ENV_PATH)) {
-  throw new Error(`.env file NOT FOUND at ${ENV_PATH}`);
+/**
+ * Load .env ONLY if it exists (local execution)
+ * In CI, environment variables come from GitHub Secrets
+ */
+if (fs.existsSync(ENV_PATH)) {
+  dotenv.config({ path: ENV_PATH });
+  console.log('Loaded .env file');
+} else {
+  console.log('.env file not found — using CI environment variables');
 }
 
-dotenv.config({ path: ENV_PATH });
+// Read environment variables (works for both local & CI)
+export const BASE_URL = process.env.BASE_URL;
+export const LOGIN_USERNAME = process.env.LOGIN_USERNAME;
+export const LOGIN_PASSWORD = process.env.LOGIN_PASSWORD;
 
-const BASE_URL = process.env.BASE_URL;
+// Validate only what is absolutely required
 if (!BASE_URL) {
-  throw new Error('BASE_URL missing in .env file');
+  throw new Error(
+    'BASE_URL is missing. Set it in .env (local) or GitHub Secrets (CI).'
+  );
 }
 
 export class BasePage {
