@@ -6,29 +6,37 @@ import { BASE_URL } from '../config/settings.js';
 export class LoginPage extends BasePage {
   constructor(page) {
     super(page);
+    this.page = page;
+
     this.emailPlaceholder = 'Enter email';
     this.passwordPlaceholder = 'Enter password';
     this.loginButtonName = 'Login';
     this.forgotPasswordLink = 'text=Forgot Password';
   }
 
+  // ---------------- OPEN LOGIN PAGE ----------------
   async openPage() {
     try {
-      await this.page.goto(BASE_URL, { waitUntil: 'domcontentloaded', timeout: 60000 });
+      await this.page.goto(BASE_URL, {
+        waitUntil: 'domcontentloaded',
+        timeout: 60000,
+      });
       console.log('[INFO] Login page opened successfully.');
     } catch (err) {
       console.log(`[ERROR] Failed to open login page: ${err}`);
+      throw err;
     }
   }
 
-  // ---------------- Helper: basic email format validation ----------------
+  // ---------------- EMAIL VALIDATION ----------------
   isValidEmail(email) {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     return emailRegex.test(email);
   }
 
+  // ---------------- LOGIN METHOD ----------------
   async login(email, password, expectSuccess = true) {
-    // ---------------- Validate email and password ----------------
+    // --------- Validation ---------
     if (!email || !password) {
       console.log('[INFO] Empty field(s) detected, login expected to fail.');
       return false;
@@ -39,58 +47,58 @@ export class LoginPage extends BasePage {
       return false;
     }
 
-    // ---------------- Fill email ----------------
-    const emailLocator = this.page.locator(`input[placeholder="${this.emailPlaceholder}"]`);
-    const emailVisible = await emailLocator.waitFor({ state: 'visible', timeout: 5000 }).then(() => true).catch(() => false);
-    if (emailVisible) {
-      console.log('[INFO] Typing email:', email);
-      await emailLocator.fill(email);
-    } else {
-      console.log('[ERROR] Email field not visible!');
-      return false;
-    }
+    // --------- Fill Email ---------
+    const emailLocator = this.page.locator(
+      `input[placeholder="${this.emailPlaceholder}"]`
+    );
+    await emailLocator.waitFor({ state: 'visible', timeout: 10000 });
+    console.log('[INFO] Typing email:', email);
+    await emailLocator.fill(email);
 
-    // ---------------- Fill password ----------------
-    const passwordLocator = this.page.locator(`input[placeholder="${this.passwordPlaceholder}"]`);
-    const passwordVisible = await passwordLocator.waitFor({ state: 'visible', timeout: 5000 }).then(() => true).catch(() => false);
-    if (passwordVisible) {
-      console.log('[INFO] Typing password: ******');
-      await passwordLocator.fill(password);
-    } else {
-      console.log('[ERROR] Password field not visible!');
-      return false;
-    }
+    // --------- Fill Password ---------
+    const passwordLocator = this.page.locator(
+      `input[placeholder="${this.passwordPlaceholder}"]`
+    );
+    await passwordLocator.waitFor({ state: 'visible', timeout: 10000 });
+    console.log('[INFO] Typing password: ******');
+    await passwordLocator.fill(password);
 
-    // ---------------- Click login button ----------------
-    const loginBtnLocator = this.page.getByRole('button', { name: this.loginButtonName });
-    const loginBtnVisible = await loginBtnLocator.waitFor({ state: 'visible', timeout: 5000 }).then(() => true).catch(() => false);
-    if (!loginBtnVisible) {
-      console.log('[ERROR] Login button not visible!');
-      return false;
-    }
-    await loginBtnLocator.click();
+    // --------- Click Login ---------
+    const loginButton = this.page.getByRole('button', {
+      name: this.loginButtonName,
+    });
+    await loginButton.waitFor({ state: 'visible', timeout: 10000 });
+    await loginButton.click();
     console.log('[INFO] Login button clicked.');
 
-    // ---------------- Wait for dashboard ----------------
+    // --------- SUCCESS PATH ---------
     if (expectSuccess) {
-      const dashboardLocator = this.page.locator('text=Dashboard');
-      const dashboardVisible = await dashboardLocator.waitFor({ state: 'visible', timeout: 15000 }).then(() => true).catch(() => false);
+      try {
+        // ✅ CI-STABLE: wait for URL change
+        await this.page.waitForURL('**/dashboard**', {
+          timeout: 30000,
+        });
 
-      if (dashboardVisible) {
         const dashboard = new DashboardPage(this.page);
         await dashboard.waitForDashboardReady();
+
         console.log('[INFO] Login successful, dashboard ready.');
         return dashboard;
-      } else {
+      } catch (error) {
         console.log('[ERROR] Dashboard did not load in expected time.');
+        await this.page.screenshot({
+          path: 'screenshots/login_failed_ci.png',
+        });
         return false;
       }
-    } else {
-      console.log('[INFO] Login expected to fail, stayed on login page.');
-      return false;
     }
+
+    // --------- FAILURE PATH ---------
+    console.log('[INFO] Login expected to fail, stayed on login page.');
+    return false;
   }
 
+  // ---------------- FORGOT PASSWORD ----------------
   async clickForgotPassword() {
     try {
       const link = this.page.locator(this.forgotPasswordLink);
@@ -99,16 +107,28 @@ export class LoginPage extends BasePage {
       console.log('[INFO] Clicked on "Forgot Password" link.');
     } catch (err) {
       console.log(`[ERROR] Failed to click "Forgot Password": ${err}`);
+      throw err;
     }
   }
 
+  // ---------------- LOGIN STATUS CHECK ----------------
   async isLoginSuccessful() {
-    const dashboardLocator = this.page.locator('text=Dashboard');
-    return await dashboardLocator.waitFor({ state: 'visible', timeout: 10000 }).then(() => true).catch(() => false);
+    try {
+      await this.page.waitForURL('**/dashboard**', { timeout: 20000 });
+      return true;
+    } catch {
+      return false;
+    }
   }
 
+  // ---------------- GENERIC VISIBILITY HELPER ----------------
   async isElementVisibleByPlaceholder(placeholderText) {
-    const locator = this.page.locator(`input[placeholder="${placeholderText}"]`);
-    return await locator.waitFor({ state: 'visible', timeout: 5000 }).then(() => true).catch(() => false);
+    const locator = this.page.locator(
+      `input[placeholder="${placeholderText}"]`
+    );
+    return await locator
+      .waitFor({ state: 'visible', timeout: 5000 })
+      .then(() => true)
+      .catch(() => false);
   }
 }
